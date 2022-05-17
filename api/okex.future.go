@@ -85,7 +85,7 @@ func NewOkexFuture(opt Option) Exchange {
 			"W":   "1week",
 		},
 		records: make(map[string][]Record),
-		host:    "https://www.okex.com/api/v1/",
+		host:    "https://www.okx.com/api/v5/",
 		logger:  model.Logger{TraderID: opt.TraderID, ExchangeType: opt.Type},
 		option:  opt,
 

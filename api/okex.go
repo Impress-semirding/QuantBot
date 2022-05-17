@@ -33,8 +33,8 @@ type OKEX struct {
 func NewOKEX(opt Option) Exchange {
 	return &OKEX{
 		stockTypeMap: map[string]string{
-			"BTC/USDT":  "btc_usdt",
-			"ETH/USDT":  "eth_usdt",
+			"BTC/USDT":  "BTC-USDT",
+			"ETH/USDT":  "ETH-USDT",
 			"EOS/USDT":  "eos_usdt",
 			"ONT/USDT":  "ont_usdt",
 			"QTUM/USDT": "qtum_usdt",
@@ -64,9 +64,10 @@ func NewOKEX(opt Option) Exchange {
 			"ONT/ETH":   0.001,
 		},
 		records: make(map[string][]Record),
-		host:    "https://www.okex.com/api/v1/",
-		logger:  model.Logger{TraderID: opt.TraderID, ExchangeType: opt.Type},
-		option:  opt,
+		// host:    "https://www.okex.com/api/v1/",
+		host:   "https://www.okx.com/api/v5/",
+		logger: model.Logger{TraderID: opt.TraderID, ExchangeType: opt.Type},
+		option: opt,
 
 		limit:     10.0,
 		lastSleep: time.Now().UnixNano(),
@@ -113,7 +114,7 @@ func (e *OKEX) GetMinAmount(stock string) float64 {
 func (e *OKEX) getAuthJSON(url string, params []string) (json *simplejson.Json, err error) {
 
 	os.Setenv("HTTP_PROXY", "http://127.0.0.1:6667")
-	os.Setenv("HTTPS_PROXY", "https://127.0.0.1:6667")
+	os.Setenv("HTTPS_PROXY", "http://127.0.0.1:6667")
 
 	e.lastTimes++
 	params = append(params, "api_key="+e.option.AccessKey)
@@ -366,7 +367,7 @@ func (e *OKEX) getTicker(stockType string, sizes ...interface{}) (ticker Ticker,
 	if len(sizes) > 0 && conver.IntMust(sizes[0]) > 0 {
 		size = conver.IntMust(sizes[0])
 	}
-	resp, err := get(fmt.Sprintf("%vdepth.do?symbol=%v&size=%v", e.host, e.stockTypeMap[stockType], size))
+	resp, err := get(fmt.Sprintf("%vmarket/books?instId=%v&sz=%v", e.host, e.stockTypeMap[stockType], size))
 	if err != nil {
 		err = fmt.Errorf("GetTicker() error, %+v", err)
 		return
@@ -376,20 +377,24 @@ func (e *OKEX) getTicker(stockType string, sizes ...interface{}) (ticker Ticker,
 		err = fmt.Errorf("GetTicker() error, %+v", err)
 		return
 	}
-	depthsJSON := json.Get("bids")
+
+	data := json.Get("data").GetIndex(0)
+	depthsJSON := data.Get("bids")
 	for i := 0; i < len(depthsJSON.MustArray()); i++ {
 		depthJSON := depthsJSON.GetIndex(i)
+		price, amount := getPriceByJson(depthJSON)
 		ticker.Bids = append(ticker.Bids, OrderBook{
-			Price:  depthJSON.GetIndex(0).MustFloat64(),
-			Amount: depthJSON.GetIndex(1).MustFloat64(),
+			Price:  price,
+			Amount: amount,
 		})
 	}
-	depthsJSON = json.Get("asks")
+	depthsJSON = data.Get("asks")
 	for i := len(depthsJSON.MustArray()); i > 0; i-- {
 		depthJSON := depthsJSON.GetIndex(i - 1)
+		price, amount := getPriceByJson(depthJSON)
 		ticker.Asks = append(ticker.Asks, OrderBook{
-			Price:  depthJSON.GetIndex(0).MustFloat64(),
-			Amount: depthJSON.GetIndex(1).MustFloat64(),
+			Price:  price,
+			Amount: amount,
 		})
 	}
 	if len(ticker.Bids) < 1 || len(ticker.Asks) < 1 {
@@ -472,4 +477,20 @@ func (e *OKEX) GetRecords(stockType, period string, sizes ...interface{}) interf
 		e.records[period] = e.records[period][len(e.records[period])-size : len(e.records[period])]
 	}
 	return e.records[period]
+}
+
+func getPriceByJson(json *simplejson.Json) (float64, float64) {
+	var price float64
+	var amount float64
+	for i, s := range json.MustStringArray() {
+		if i == 0 {
+			price, _ = conver.Float64(s)
+		}
+
+		if i == 1 {
+			amount, _ = conver.Float64(s)
+		}
+	}
+
+	return price, amount
 }
