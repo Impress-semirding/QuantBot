@@ -122,6 +122,8 @@ func run(id int64) (err error) {
 		}()
 		trader.LastRunAt = time.Now()
 		trader.Status = 1
+
+		// RUN javascript
 		if _, err := trader.ctx.Run(trader.Algorithm.Script); err != nil {
 			trader.Logger.Log(constant.ERROR, "", 0.0, 0.0, err)
 		}

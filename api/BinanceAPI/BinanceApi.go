@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+
 	//"os"
 	"strconv"
 	"time"
@@ -32,12 +34,12 @@ var (
 )
 
 func init() {
-	//os.Setenv("HTTP_PROXY", "http://127.0.0.1:6667")
-	//os.Setenv("HTTPS_PROXY", "https://127.0.0.1:6667")
+	os.Setenv("HTTP_PROXY", "http://127.0.0.1:8001")
+	os.Setenv("HTTPS_PROXY", "http://127.0.0.1:8001")
 }
 
 func buildParamsSigned(postForm *url.Values) error {
-	postForm.Set("recvWindow", "6000000")
+	postForm.Set("recvWindow", "60000")
 	tonce := strconv.FormatInt(time.Now().UnixNano(), 10)[0:13]
 	postForm.Set("timestamp", tonce)
 	payload := postForm.Encode()

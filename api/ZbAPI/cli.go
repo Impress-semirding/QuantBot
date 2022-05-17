@@ -21,8 +21,8 @@ var (
 
 func init() {
 
-	os.Setenv("HTTP_PROXY", "http://127.0.0.1:6667")
-	os.Setenv("HTTPS_PROXY", "https://127.0.0.1:6667")
+	os.Setenv("HTTP_PROXY", "http://127.0.0.1:8001")
+	os.Setenv("HTTPS_PROXY", "http://127.0.0.1:8001")
 
 	Config.ACCESS_KEY = ""
 	Config.SECRET_KEY = ""
