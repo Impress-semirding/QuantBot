@@ -6,15 +6,16 @@ import (
 
 // Exchange struct
 type Exchange struct {
-	ID        int64      `gorm:"primary_key" json:"id"`
-	UserID    int64      `gorm:"index" json:"userId"`
-	Name      string     `gorm:"type:varchar(50)" json:"name"`
-	Type      string     `gorm:"type:varchar(50)" json:"type"`
-	AccessKey string     `gorm:"type:varchar(200)" json:"accessKey"`
-	SecretKey string     `gorm:"type:varchar(200)" json:"secretKey"`
-	CreatedAt time.Time  `json:"createdAt"`
-	UpdatedAt time.Time  `json:"updatedAt"`
-	DeletedAt *time.Time `sql:"index" json:"-"`
+	ID         int64      `gorm:"primary_key" json:"id"`
+	UserID     int64      `gorm:"index" json:"userId"`
+	Name       string     `gorm:"type:varchar(50)" json:"name"`
+	Type       string     `gorm:"type:varchar(50)" json:"type"`
+	AccessKey  string     `gorm:"type:varchar(200)" json:"accessKey"`
+	SecretKey  string     `gorm:"type:varchar(200)" json:"secretKey"`
+	Passphrase string     `gorm:"type:varchar(200)" json:"passphrase"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	UpdatedAt  time.Time  `json:"updatedAt"`
+	DeletedAt  *time.Time `sql:"index" json:"-"`
 }
 
 // ListExchange ...

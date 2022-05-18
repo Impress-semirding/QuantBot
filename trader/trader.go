@@ -80,11 +80,12 @@ func initialize(id int64) (trader Global, err error) {
 	for _, e := range es {
 		if maker, ok := exchangeMaker[e.Type]; ok {
 			opt := api.Option{
-				TraderID:  trader.ID,
-				Type:      e.Type,
-				Name:      e.Name,
-				AccessKey: e.AccessKey,
-				SecretKey: e.SecretKey,
+				TraderID:   trader.ID,
+				Type:       e.Type,
+				Name:       e.Name,
+				AccessKey:  e.AccessKey,
+				SecretKey:  e.SecretKey,
+				Passphrase: e.Passphrase,
 			}
 			trader.es = append(trader.es, maker(opt))
 		}

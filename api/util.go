@@ -1,12 +1,14 @@
 package api
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -129,6 +131,48 @@ func post(url string, data []string) (ret []byte, err error) {
 		resp.Body.Close()
 	} else {
 		err = fmt.Errorf("[POST %s] HTTP Status: %d, Info: %v", url, resp.StatusCode, err)
+	}
+	return ret, err
+}
+
+func postWithHeader(url string, header map[string]string, data interface{}) (ret []byte, err error) {
+	if data, err := json.Marshal(data); err == nil {
+		jsonStr, _ := interface{}(data).([]byte)
+
+		req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+		for k, v := range header {
+			fmt.Println(k, v)
+			req.Header.Set(k, v)
+		}
+		resp, err := client.Do(req)
+		if resp == nil {
+			err = fmt.Errorf("[POST %s] HTTP Error Info: %v", url, err)
+		} else if resp.StatusCode == 200 {
+			ret, _ = ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
+		} else {
+			err = fmt.Errorf("[POST %s] HTTP Status: %d, Info: %v", url, resp.StatusCode, err)
+		}
+		return ret, err
+	}
+
+	return nil, err
+}
+
+func getWithHeader(url string, header map[string]string, data interface{}) (ret []byte, err error) {
+	req, _ := http.NewRequest("GET", url, nil)
+	for k, v := range header {
+		fmt.Println(k, v)
+		req.Header.Set(k, v)
+	}
+	resp, err := client.Do(req)
+	if resp == nil {
+		err = fmt.Errorf("[GET %s] HTTP Error Info: %v", url, err)
+	} else if resp.StatusCode == 200 {
+		ret, _ = ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+	} else {
+		err = fmt.Errorf("[GET %s] HTTP Status: %d, Info: %v", url, resp.StatusCode, err)
 	}
 	return ret, err
 }

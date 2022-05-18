@@ -2,15 +2,25 @@ package api
 
 import (
 	"fmt"
+	netUrl "net/url"
 	"os"
-	"sort"
 	"strings"
 	"time"
+
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 
 	"github.com/bitly/go-simplejson"
 	"github.com/miaolz123/conver"
 	"github.com/phonegapX/QuantBot/constant"
 	"github.com/phonegapX/QuantBot/model"
+)
+
+const (
+	message = "hello world!"
+	secret  = "0933e54e76b24731a2d84b6b463ec04c"
 )
 
 // OKEX the exchange struct of okex.com
@@ -111,17 +121,33 @@ func (e *OKEX) GetMinAmount(stock string) float64 {
 	return e.minAmountMap[stock]
 }
 
-func (e *OKEX) getAuthJSON(url string, params []string) (json *simplejson.Json, err error) {
+func (e *OKEX) getAuthJSON(url string, method string, params interface{}) (json *simplejson.Json, err error) {
 
-	os.Setenv("HTTP_PROXY", "http://127.0.0.1:6667")
-	os.Setenv("HTTPS_PROXY", "http://127.0.0.1:6667")
+	os.Setenv("HTTP_PROXY", "http://127.0.0.1:8001")
+	os.Setenv("HTTPS_PROXY", "http://127.0.0.1:8001")
+	p, _ := netUrl.Parse(url)
+	requestPath := p.Path
+	if p.RawQuery != "" {
+		requestPath = p.Path + "?" + p.RawQuery
+	}
+	apiKey := e.option.AccessKey
+	passphrase := e.option.Passphrase
+	// sign := HmacSha256(timestamp+method+requestPath, e.option.SecretKey)
+	timestamp, signStr := sign("GET", requestPath, "", []byte(e.option.SecretKey))
+
+	fmt.Println(timestamp)
+
+	header := map[string]string{
+		"Content-Type":         "application/json",
+		"OK-ACCESS-KEY":        apiKey,
+		"OK-ACCESS-SIGN":       signStr,
+		"OK-ACCESS-TIMESTAMP":  timestamp,
+		"OK-ACCESS-PASSPHRASE": passphrase,
+		"x-simulated-trading":  "1",
+	}
 
 	e.lastTimes++
-	params = append(params, "api_key="+e.option.AccessKey)
-	sort.Strings(params)
-	params = append(params, "secret_key="+e.option.SecretKey)
-	params = append(params, "sign="+strings.ToUpper(signMd5(params)))
-	resp, err := post(url, params)
+	resp, err := getWithHeader(url, header, params)
 	if err != nil {
 		return
 	}
@@ -130,29 +156,29 @@ func (e *OKEX) getAuthJSON(url string, params []string) (json *simplejson.Json, 
 
 // GetAccount get the account detail of this exchange
 func (e *OKEX) GetAccount() interface{} {
-	json, err := e.getAuthJSON(e.host+"userinfo.do", []string{})
+	json, err := e.getAuthJSON(e.host+"account/balance", "GET", nil)
 	if err != nil {
-		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetAccount() error, ", err)
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetAccount() balance error, ", err)
 		return false
 	}
-	if result := json.Get("result").MustBool(); !result {
-		err = fmt.Errorf("GetAccount() error, the error number is %v", json.Get("error_code").MustInt())
-		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetAccount() error, ", err)
-		return false
-	}
+
+	json = json.Get("data").GetIndex(0)
+	// if result := json.Get("data").GetIndex(0).MustBool(); !result {
+	// 	err = fmt.Errorf("GetAccount() error, the error number is %v", json.Get("error_code").MustInt())
+	// 	e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetAccount() error, ", err)
+	// 	return false
+	// }
 	return map[string]float64{
-		"USDT":       conver.Float64Must(json.GetPath("info", "funds", "free", "usdt").Interface()),
-		"FrozenUSDT": conver.Float64Must(json.GetPath("info", "funds", "freezed", "usdt").Interface()),
-		"BTC":        conver.Float64Must(json.GetPath("info", "funds", "free", "btc").Interface()),
-		"FrozenBTC":  conver.Float64Must(json.GetPath("info", "funds", "freezed", "btc").Interface()),
-		"ETH":        conver.Float64Must(json.GetPath("info", "funds", "free", "eth").Interface()),
-		"FrozenETH":  conver.Float64Must(json.GetPath("info", "funds", "freezed", "eth").Interface()),
-		"EOS":        conver.Float64Must(json.GetPath("info", "funds", "free", "eos").Interface()),
-		"FrozenEOS":  conver.Float64Must(json.GetPath("info", "funds", "freezed", "eos").Interface()),
-		"ONT":        conver.Float64Must(json.GetPath("info", "funds", "free", "ont").Interface()),
-		"FrozenONT":  conver.Float64Must(json.GetPath("info", "funds", "freezed", "ont").Interface()),
-		"QTUM":       conver.Float64Must(json.GetPath("info", "funds", "free", "qtum").Interface()),
-		"FrozenQTUM": conver.Float64Must(json.GetPath("info", "funds", "freezed", "qtum").Interface()),
+		"adjEq": conver.Float64Must(json.Get("adjEq").MustString()),
+		// details := conver.Float64Must(json.Get("details").MustString())
+		"imr":         conver.Float64Must(json.Get("imr").MustString()),
+		"isoEq":       conver.Float64Must(json.Get("isoEq").MustString()),
+		"mgnRatio":    conver.Float64Must(json.Get("mgnRatio").MustString()),
+		"ordFroz":     conver.Float64Must(json.Get("ordFroz").MustString()),
+		"totalEq":     conver.Float64Must(json.Get("totalEq").MustString()),
+		"mmr":         conver.Float64Must(json.Get("mmr").MustString()),
+		"notionalUsd": conver.Float64Must(json.Get("notionalUsd").MustString()),
+		"uTime":       conver.Float64Must(json.Get("uTime").MustString()),
 	}
 }
 
@@ -189,7 +215,7 @@ func (e *OKEX) buy(stockType string, price, amount float64, msgs ...interface{})
 		params = append(params, fmt.Sprintf("price=%f", price))
 	}
 	params = append(params, typeParam, amountParam)
-	json, err := e.getAuthJSON(e.host+"trade.do", params)
+	json, err := e.getAuthJSON(e.host+"trade.do", "GET", params)
 	if err != nil {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Buy() error, ", err)
 		return false
@@ -213,7 +239,7 @@ func (e *OKEX) sell(stockType string, price, amount float64, msgs ...interface{}
 		params = append(params, fmt.Sprintf("price=%f", price))
 	}
 	params = append(params, typeParam)
-	json, err := e.getAuthJSON(e.host+"trade.do", params)
+	json, err := e.getAuthJSON(e.host+"trade.do", "GET", params)
 	if err != nil {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Sell() error, ", err)
 		return false
@@ -237,7 +263,7 @@ func (e *OKEX) GetOrder(stockType, id string) interface{} {
 		"symbol=" + e.stockTypeMap[stockType],
 		"order_id=" + id,
 	}
-	json, err := e.getAuthJSON(e.host+"order_info.do", params)
+	json, err := e.getAuthJSON(e.host+"order_info.do", "GET", params)
 	if err != nil {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetOrder() error, ", err)
 		return false
@@ -263,35 +289,42 @@ func (e *OKEX) GetOrder(stockType, id string) interface{} {
 
 // GetOrders get all unfilled orders
 func (e *OKEX) GetOrders(stockType string) interface{} {
-	stockType = strings.ToUpper(stockType)
+	// stockType = strings.ToUpper(stockType)
 	if _, ok := e.stockTypeMap[stockType]; !ok {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetOrders() error, unrecognized stockType: ", stockType)
 		return false
 	}
 	params := []string{
-		"symbol=" + e.stockTypeMap[stockType],
-		"order_id=-1",
+		"instId=" + e.stockTypeMap[stockType],
+		"instType=SPOT",
 	}
-	json, err := e.getAuthJSON(e.host+"order_info.do", params)
+
+	query := ""
+	for index, v := range params {
+		if index == 0 {
+			query = v
+		} else {
+			query = query + "&" + v
+		}
+	}
+	json, err := e.getAuthJSON(e.host+"trade/orders-pending?"+query, "GET", nil)
+
 	if err != nil {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetOrders() error, ", err)
 		return false
 	}
-	if result := json.Get("result").MustBool(); !result {
-		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetOrders() error, the error number is ", json.Get("error_code").MustInt())
-		return false
-	}
+
 	orders := []Order{}
-	ordersJSON := json.Get("orders")
+	ordersJSON := json.Get("data")
 	count := len(ordersJSON.MustArray())
 	for i := 0; i < count; i++ {
 		orderJSON := ordersJSON.GetIndex(i)
 		orders = append(orders, Order{
-			ID:         fmt.Sprint(orderJSON.Get("order_id").Interface()),
-			Price:      orderJSON.Get("price").MustFloat64(),
-			Amount:     orderJSON.Get("amount").MustFloat64(),
-			DealAmount: orderJSON.Get("deal_amount").MustFloat64(),
-			TradeType:  e.tradeTypeMap[orderJSON.Get("type").MustString()],
+			ID:         fmt.Sprint(orderJSON.Get("ordId").MustString()),
+			Price:      conver.Float64Must(orderJSON.Get("px").MustString()),
+			Amount:     conver.Float64Must(orderJSON.Get("sz").MustString()),
+			DealAmount: conver.Float64Must(orderJSON.Get("accFillSz").MustString()),
+			TradeType:  e.tradeTypeMap[orderJSON.Get("ordType").MustString()],
 			StockType:  stockType,
 		})
 	}
@@ -311,7 +344,7 @@ func (e *OKEX) GetTrades(stockType string) interface{} {
 		"current_page=1",
 		"page_length=200",
 	}
-	json, err := e.getAuthJSON(e.host+"order_history.do", params)
+	json, err := e.getAuthJSON(e.host+"order_history.do", "GET", params)
 	if err != nil {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetTrades() error, ", err)
 		return false
@@ -343,7 +376,7 @@ func (e *OKEX) CancelOrder(order Order) bool {
 		"symbol=" + e.stockTypeMap[order.StockType],
 		"order_id=" + order.ID,
 	}
-	json, err := e.getAuthJSON(e.host+"cancel_order.do", params)
+	json, err := e.getAuthJSON(e.host+"cancel_order.do", "GET", params)
 	if err != nil {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "CancelOrder() error, ", err)
 		return false
@@ -497,4 +530,24 @@ func getPriceByJson(json *simplejson.Json) (float64, float64) {
 	}
 
 	return price, amount
+}
+
+func HmacSha256(message string, secret string) string {
+	key := []byte(secret)
+	h := hmac.New(sha256.New, key)
+	h.Write([]byte(message))
+	sha := hex.EncodeToString(h.Sum(nil))
+
+	return base64.StdEncoding.EncodeToString([]byte(sha))
+}
+
+func sign(method, path, body string, secretKey []byte) (string, string) {
+	format := "2006-01-02T15:04:05.999Z07:00"
+	t := time.Now().UTC().Format(format)
+	ts := fmt.Sprint(t)
+	s := ts + method + path + body
+	p := []byte(s)
+	h := hmac.New(sha256.New, secretKey)
+	h.Write(p)
+	return ts, base64.StdEncoding.EncodeToString(h.Sum(nil))
 }

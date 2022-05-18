@@ -2,11 +2,12 @@ package api
 
 // Option is an exchange option
 type Option struct {
-	TraderID  int64
-	Type      string
-	Name      string
-	AccessKey string
-	SecretKey string
+	TraderID   int64
+	Type       string
+	Name       string
+	AccessKey  string
+	SecretKey  string
+	Passphrase string
 }
 
 // Exchange interface
