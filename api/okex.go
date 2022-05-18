@@ -47,13 +47,13 @@ func NewOKEX(opt Option) Exchange {
 			"sell_market": constant.TradeTypeSell,
 		},
 		recordsPeriodMap: map[string]string{
-			"M":   "1min",
-			"M5":  "5min",
-			"M15": "15min",
-			"M30": "30min",
-			"H":   "1hour",
-			"D":   "1day",
-			"W":   "1week",
+			"M":   "1m",
+			"M5":  "5m",
+			"M15": "15m",
+			"M30": "30m",
+			"H":   "1H",
+			"D":   "1D",
+			"W":   "1W",
 		},
 		minAmountMap: map[string]float64{
 			"BTC/USDT":  0.001,
@@ -382,7 +382,10 @@ func (e *OKEX) getTicker(stockType string, sizes ...interface{}) (ticker Ticker,
 	depthsJSON := data.Get("bids")
 	for i := 0; i < len(depthsJSON.MustArray()); i++ {
 		depthJSON := depthsJSON.GetIndex(i)
+		// d, _ := conver.Float64(depthJSON.GetIndex(0).MustString())
+		// d2, _ := conver.Float64(depthJSON.GetIndex(1).MustString())
 		price, amount := getPriceByJson(depthJSON)
+
 		ticker.Bids = append(ticker.Bids, OrderBook{
 			Price:  price,
 			Amount: amount,
@@ -432,7 +435,7 @@ func (e *OKEX) GetRecords(stockType, period string, sizes ...interface{}) interf
 	if len(sizes) > 0 && conver.IntMust(sizes[0]) > 0 {
 		size = conver.IntMust(sizes[0])
 	}
-	resp, err := get(fmt.Sprintf("%vkline.do?symbol=%v&type=%v&size=%v", e.host, e.stockTypeMap[stockType], e.recordsPeriodMap[period], size))
+	resp, err := get(fmt.Sprintf("%vmarket/candles?instId=%v&bar=%v&limit=%v", e.host, e.stockTypeMap[stockType], e.recordsPeriodMap[period], size))
 	if err != nil {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetRecords() error, ", err)
 		return false
@@ -447,26 +450,27 @@ func (e *OKEX) GetRecords(stockType, period string, sizes ...interface{}) interf
 		timeLast = e.records[period][len(e.records[period])-1].Time
 	}
 	recordsNew := []Record{}
+	json = json.Get("data")
 	for i := len(json.MustArray()); i > 0; i-- {
 		recordJSON := json.GetIndex(i - 1)
-		recordTime := recordJSON.GetIndex(0).MustInt64() / 1000
+		recordTime := conver.Int64Must(recordJSON.GetIndex(0).MustString()) / 1000
 		if recordTime > timeLast {
 			recordsNew = append([]Record{{
 				Time:   recordTime,
-				Open:   recordJSON.GetIndex(1).MustFloat64(),
-				High:   recordJSON.GetIndex(2).MustFloat64(),
-				Low:    recordJSON.GetIndex(3).MustFloat64(),
-				Close:  recordJSON.GetIndex(4).MustFloat64(),
-				Volume: recordJSON.GetIndex(5).MustFloat64(),
+				Open:   conver.Float64Must(recordJSON.GetIndex(1).MustString()),
+				High:   conver.Float64Must(recordJSON.GetIndex(2).MustString()),
+				Low:    conver.Float64Must(recordJSON.GetIndex(3).MustString()),
+				Close:  conver.Float64Must(recordJSON.GetIndex(4).MustString()),
+				Volume: conver.Float64Must(recordJSON.GetIndex(5).MustString()),
 			}}, recordsNew...)
 		} else if timeLast > 0 && recordTime == timeLast {
 			e.records[period][len(e.records[period])-1] = Record{
 				Time:   recordTime,
-				Open:   recordJSON.GetIndex(1).MustFloat64(),
-				High:   recordJSON.GetIndex(2).MustFloat64(),
-				Low:    recordJSON.GetIndex(3).MustFloat64(),
-				Close:  recordJSON.GetIndex(4).MustFloat64(),
-				Volume: recordJSON.GetIndex(5).MustFloat64(),
+				Open:   conver.Float64Must(recordJSON.GetIndex(1).MustString()),
+				High:   conver.Float64Must(recordJSON.GetIndex(2).MustString()),
+				Low:    conver.Float64Must(recordJSON.GetIndex(3).MustString()),
+				Close:  conver.Float64Must(recordJSON.GetIndex(4).MustString()),
+				Volume: conver.Float64Must(recordJSON.GetIndex(5).MustString()),
 			}
 		} else {
 			break
