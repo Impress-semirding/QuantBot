@@ -1,16 +1,16 @@
 package api
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	encodingJson "encoding/json"
 	"fmt"
 	netUrl "net/url"
 	"os"
 	"strings"
 	"time"
-
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
 
 	"github.com/bitly/go-simplejson"
 	"github.com/miaolz123/conver"
@@ -121,7 +121,7 @@ func (e *OKEX) GetMinAmount(stock string) float64 {
 	return e.minAmountMap[stock]
 }
 
-func (e *OKEX) getAuthJSON(url string, method string, params interface{}) (json *simplejson.Json, err error) {
+func (e *OKEX) getAuthJSON(url string, method string, body interface{}) (json *simplejson.Json, err error) {
 
 	os.Setenv("HTTP_PROXY", "http://127.0.0.1:8001")
 	os.Setenv("HTTPS_PROXY", "http://127.0.0.1:8001")
@@ -133,7 +133,21 @@ func (e *OKEX) getAuthJSON(url string, method string, params interface{}) (json 
 	apiKey := e.option.AccessKey
 	passphrase := e.option.Passphrase
 	// sign := HmacSha256(timestamp+method+requestPath, e.option.SecretKey)
-	timestamp, signStr := sign("GET", requestPath, "", []byte(e.option.SecretKey))
+	var timestamp string
+	var signStr string
+	if method == "GET" {
+		timestamp, signStr = sign("GET", requestPath, "", []byte(e.option.SecretKey))
+	} else {
+		j, err := encodingJson.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+		signBody := string(j)
+		if body == "{}" {
+			signBody = ""
+		}
+		timestamp, signStr = sign("POST", requestPath, signBody, []byte(e.option.SecretKey))
+	}
 
 	fmt.Println(timestamp)
 
@@ -147,8 +161,14 @@ func (e *OKEX) getAuthJSON(url string, method string, params interface{}) (json 
 	}
 
 	e.lastTimes++
-	resp, err := getWithHeader(url, header, params)
-	if err != nil {
+	var errs error
+	var resp []byte
+	if method == "GET" {
+		resp, errs = getWithHeader(url, header, body)
+	} else if method == "POST" {
+		resp, errs = postWithHeader(url, header, body)
+	}
+	if errs != nil {
 		return
 	}
 	return simplejson.NewJson(resp)
@@ -204,28 +224,31 @@ func (e *OKEX) Trade(tradeType string, stockType string, _price, _amount interfa
 }
 
 func (e *OKEX) buy(stockType string, price, amount float64, msgs ...interface{}) interface{} {
-	params := []string{
-		"symbol=" + e.stockTypeMap[stockType],
+	body := map[string]string{
+		"instId":  e.stockTypeMap[stockType],
+		"tdMode":  "cross",
+		"side":    "buy",
+		"ordType": "limit",
+		"px":      conver.StringMust(price),
+		"sz":      conver.StringMust(amount),
 	}
-	typeParam := "type=buy_market"
-	amountParam := fmt.Sprintf("price=%f", amount)
-	if price > 0 {
-		typeParam = "type=buy"
-		amountParam = fmt.Sprintf("amount=%f", amount)
-		params = append(params, fmt.Sprintf("price=%f", price))
-	}
-	params = append(params, typeParam, amountParam)
-	json, err := e.getAuthJSON(e.host+"trade.do", "GET", params)
+	json, err := e.getAuthJSON(e.host+"trade/order", "POST", body)
 	if err != nil {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Buy() error, ", err)
 		return false
 	}
-	if result := json.Get("result").MustBool(); !result {
+	// 	clOrdId":interface {}(string) ""
+	// "ordId":interface {}(string) ""
+	// "sCode":interface {}(string) "51000"
+	// "sMsg":interface {}(string) "Parameter tdMode  error "
+	// "tag":
+	j := json.Get("data").GetIndex(0)
+	if sCode := j.Get("sCode").MustString(); sCode != "0" {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Buy() error, the error number is ", json.Get("error_code").MustInt())
 		return false
 	}
 	e.logger.Log(constant.BUY, stockType, price, amount, msgs...)
-	return fmt.Sprint(json.Get("order_id").Interface())
+	return fmt.Sprint(j.Get("ordId").Interface())
 }
 
 func (e *OKEX) sell(stockType string, price, amount float64, msgs ...interface{}) interface{} {
