@@ -100,6 +100,7 @@ func initialize(id int64) (trader Global, err error) {
 	trader.ctx.Set("E", trader.es[0])
 	trader.ctx.Set("Exchanges", trader.es)
 	trader.ctx.Set("Es", trader.es)
+	trader.ctx.Set("Talib", Talib{})
 	return
 }
 
