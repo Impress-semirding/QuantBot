@@ -144,7 +144,6 @@ func postWithHeader(url string, header map[string]string, data interface{}) (ret
 
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer([]byte(body)))
 	for k, v := range header {
-		fmt.Println(k, v)
 		req.Header.Set(k, v)
 	}
 	resp, err := client.Do(req)
@@ -164,7 +163,6 @@ func getWithHeader(url string, header map[string]string, data interface{}) (ret 
 
 	req, _ := http.NewRequest("GET", url, nil)
 	for k, v := range header {
-		fmt.Println(k, v)
 		req.Header.Set(k, v)
 	}
 	resp, err := client.Do(req)

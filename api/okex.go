@@ -149,8 +149,6 @@ func (e *OKEX) getAuthJSON(url string, method string, body interface{}) (json *s
 		timestamp, signStr = sign("POST", requestPath, signBody, []byte(e.option.SecretKey))
 	}
 
-	fmt.Println(timestamp)
-
 	header := map[string]string{
 		"Content-Type":         "application/json",
 		"OK-ACCESS-KEY":        apiKey,
