@@ -553,3 +553,7 @@ func (e *Poloniex) GetRecords(stockType, period string, sizes ...interface{}) in
 	}
 	return e.records[period]
 }
+
+func (e *Poloniex) GetPositions(stockType string, options ...interface{}) interface{} {
+	return nil
+}

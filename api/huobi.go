@@ -355,3 +355,7 @@ func (e *Huobi) GetTicker(stockType string, sizes ...interface{}) interface{} {
 func (e *Huobi) GetRecords(stockType, period string, sizes ...interface{}) interface{} {
 	return nil
 }
+
+func (e *Huobi) GetPositions(stockType string, options ...interface{}) interface{} {
+	return nil
+}

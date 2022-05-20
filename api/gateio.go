@@ -349,3 +349,7 @@ func (e *GateIo) GetTicker(stockType string, sizes ...interface{}) interface{} {
 func (e *GateIo) GetRecords(stockType, period string, sizes ...interface{}) interface{} {
 	return nil
 }
+
+func (e *GateIo) GetPositions(stockType string, options ...interface{}) interface{} {
+	return nil
+}

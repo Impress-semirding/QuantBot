@@ -13,6 +13,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/bitly/go-simplejson"
+	"github.com/miaolz123/conver"
 )
 
 var client = http.DefaultClient
@@ -194,4 +197,8 @@ func get(url string) (ret []byte, err error) {
 		err = fmt.Errorf("[GET %s] HTTP Status: %d, Info: %v", url, resp.StatusCode, err)
 	}
 	return ret, err
+}
+
+func getFloatValueFromJsonObject(json *simplejson.Json, key string) float64 {
+	return conver.Float64Must(json.Get(key).MustString())
 }

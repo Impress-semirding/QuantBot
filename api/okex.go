@@ -4,7 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	encodingJson "encoding/json"
 	"fmt"
 	netUrl "net/url"
@@ -169,6 +168,7 @@ func (e *OKEX) getAuthJSON(url string, method string, body interface{}) (json *s
 	if errs != nil {
 		return
 	}
+
 	return simplejson.NewJson(resp)
 }
 
@@ -537,6 +537,66 @@ func (e *OKEX) GetRecords(stockType, period string, sizes ...interface{}) interf
 	return e.records[period]
 }
 
+// GetPositions get the positions detail of this exchange
+func (e *OKEX) GetPositions(stockType string, options ...interface{}) interface{} {
+	stockType = strings.ToUpper(stockType)
+	if _, ok := e.stockTypeMap[stockType]; !ok {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetPositions() error, unrecognized stockType: ", stockType)
+		return false
+	}
+
+	params := []string{
+		"?stockType=" + e.stockTypeMap[stockType],
+	}
+	for index, value := range options {
+		if index == 0 {
+			if instType, ok := value.(string); ok {
+				params = append(params, "instType="+instType)
+			}
+		} else if index == 1 {
+			if posId, ok := value.(string); ok {
+				params = append(params, "posId="+posId)
+			}
+		}
+	}
+
+	json, err := e.getAuthJSON(e.host+"account/positions"+strings.Join(params, "&"), "GET", nil)
+	if err != nil {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetPositions() error, ", err)
+		return false
+	}
+	positionsJSON := json.Get("data")
+	count := len(positionsJSON.MustArray())
+	positions := []Position{}
+	for i := 0; i < count; i++ {
+		positionJSON := positionsJSON.GetIndex(i)
+		fmt.Println(positionJSON)
+		positions = append(positions, Position{
+			Price:         conver.Float64Must(positionJSON.Get("avgPx").MustString()),
+			Leverage:      conver.IntMust(positionJSON.Get("lever").MustString()),
+			Amount:        conver.Float64Must(positionJSON.Get("pos").MustString()),
+			ConfirmAmount: conver.Float64Must(positionJSON.Get("pos").MustString()),
+			FrozenAmount:  0.0,
+			Profit:        conver.Float64Must(positionJSON.Get("upl").MustString()),
+			ContractType:  positionJSON.Get("instType").MustString(),
+			TradeType:     positionJSON.Get("instType").MustString(),
+			StockType:     positionJSON.Get("instId").MustString(),
+		})
+	}
+	return positions
+}
+
+func sign(method, path, body string, secretKey []byte) (string, string) {
+	format := "2006-01-02T15:04:05.999Z07:00"
+	t := time.Now().UTC().Format(format)
+	ts := fmt.Sprint(t)
+	s := ts + method + path + body
+	p := []byte(s)
+	h := hmac.New(sha256.New, secretKey)
+	h.Write(p)
+	return ts, base64.StdEncoding.EncodeToString(h.Sum(nil))
+}
+
 func getPriceByJson(json *simplejson.Json) (float64, float64) {
 	var price float64
 	var amount float64
@@ -551,24 +611,4 @@ func getPriceByJson(json *simplejson.Json) (float64, float64) {
 	}
 
 	return price, amount
-}
-
-func HmacSha256(message string, secret string) string {
-	key := []byte(secret)
-	h := hmac.New(sha256.New, key)
-	h.Write([]byte(message))
-	sha := hex.EncodeToString(h.Sum(nil))
-
-	return base64.StdEncoding.EncodeToString([]byte(sha))
-}
-
-func sign(method, path, body string, secretKey []byte) (string, string) {
-	format := "2006-01-02T15:04:05.999Z07:00"
-	t := time.Now().UTC().Format(format)
-	ts := fmt.Sprint(t)
-	s := ts + method + path + body
-	p := []byte(s)
-	h := hmac.New(sha256.New, secretKey)
-	h.Write(p)
-	return ts, base64.StdEncoding.EncodeToString(h.Sum(nil))
 }

@@ -164,54 +164,8 @@ func (e *OkexFuture) GetAccount() interface{} {
 	}
 }
 
-// GetPositions get the positions detail of this exchange
-func (e *OkexFuture) GetPositions(stockType string) interface{} {
-	stockType = strings.ToUpper(stockType)
-	if _, ok := e.stockTypeMap[stockType]; !ok {
-		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetPositions() error, unrecognized stockType: ", stockType)
-		return false
-	}
-	positions := []Position{}
-	params := []string{
-		"symbol=" + e.stockTypeMap[stockType][0],
-		"contract_type=" + e.stockTypeMap[stockType][1],
-	}
-	json, err := e.getAuthJSON(e.host+"future_position.do", params)
-	if err != nil {
-		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetPositions() error, ", err)
-		return false
-	}
-	if result := json.Get("result").MustBool(); !result {
-		err = fmt.Errorf("GetPositions() error, the error number is %v", json.Get("error_code").MustInt())
-		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetPositions() error, ", err)
-		return false
-	}
-	positionsJSON := json.Get("holding")
-	count := len(positionsJSON.MustArray())
-	for i := 0; i < count; i++ {
-		positionJSON := positionsJSON.GetIndex(i)
-		side := "sell"
-		tradeType := constant.TradeTypeShort
-		amount := conver.Float64Must(positionJSON.Get("buy_amount").Interface())
-		if amount > 0 {
-			side = "buy"
-			tradeType = constant.TradeTypeLong
-		} else if amount = conver.Float64Must(positionJSON.Get("sell_amount").Interface()); amount == 0.0 {
-			continue
-		}
-		positions = append(positions, Position{
-			Price:         conver.Float64Must(positionJSON.Get(side + "_price_avg").Interface()),
-			Leverage:      conver.IntMust(positionJSON.Get("lever_rate").Interface()),
-			Amount:        conver.Float64Must(positionJSON.Get(side + "_amount").Interface()),
-			ConfirmAmount: conver.Float64Must(positionJSON.Get(side + "_available").Interface()),
-			FrozenAmount:  0.0,
-			Profit:        conver.Float64Must(positionJSON.Get(side + "_profit_real").Interface()),
-			ContractType:  e.contractTypeAntiMap[positionJSON.Get("contract_type").MustString()],
-			TradeType:     tradeType,
-			StockType:     stockType,
-		})
-	}
-	return positions
+func (e *OkexFuture) GetPositions(stockType string, options ...interface{}) interface{} {
+	return nil
 }
 
 // Trade place an order

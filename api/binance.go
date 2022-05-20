@@ -305,3 +305,7 @@ func (e *Binance) GetTicker(stockType string, sizes ...interface{}) interface{} 
 func (e *Binance) GetRecords(stockType, period string, sizes ...interface{}) interface{} {
 	return nil
 }
+
+func (e *Binance) GetPositions(stockType string, options ...interface{}) interface{} {
+	return nil
+}

@@ -292,3 +292,7 @@ func (e *BigOne) GetTicker(stockType string, sizes ...interface{}) interface{} {
 func (e *BigOne) GetRecords(stockType, period string, sizes ...interface{}) interface{} {
 	return nil
 }
+
+func (e *BigOne) GetPositions(stockType string, options ...interface{}) interface{} {
+	return nil
+}
