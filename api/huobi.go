@@ -359,3 +359,12 @@ func (e *Huobi) GetRecords(stockType, period string, sizes ...interface{}) inter
 func (e *Huobi) GetPositions(stockType string, options ...interface{}) interface{} {
 	return nil
 }
+
+func (e *Huobi) ClosePosition(instId, mgnMode, posSide string, options ...interface{}) bool {
+	return true
+}
+
+// 策略下单，提供止盈止损
+func (e *Huobi) TradeAlgo(instId, tdMode, side, ordType, sz string, options ...interface{}) interface{} {
+	return nil
+}

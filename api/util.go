@@ -22,6 +22,8 @@ var client = http.DefaultClient
 
 // Position struct
 type Position struct {
+	InstId        string
+	MgnMode       string
 	Price         float64 //价格
 	Leverage      int     //杠杆比例
 	Amount        float64 //总合约数量
@@ -31,6 +33,8 @@ type Position struct {
 	ContractType  string  //合约类型
 	TradeType     string  //交易类型
 	StockType     string  //货币类型
+	PosId         string  //持仓ID
+	PosSide       string  //持仓方向,多还是空
 }
 
 // Order struct

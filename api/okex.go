@@ -38,16 +38,23 @@ type OKEX struct {
 	lastTimes int64
 }
 
+var mgnModes map[string]bool = map[string]bool{
+	"cross":    true,
+	"isolated": true,
+}
+
 // NewOKEX create an exchange struct of okex.com
 func NewOKEX(opt Option) Exchange {
 	return &OKEX{
 		stockTypeMap: map[string]string{
-			"BTC/USDT":  "BTC-USDT",
-			"ETH/USDT":  "ETH-USDT",
-			"EOS/USDT":  "eos_usdt",
-			"ONT/USDT":  "ont_usdt",
-			"QTUM/USDT": "qtum_usdt",
-			"ONT/ETH":   "ont_eth",
+			"BTC/USDT":      "BTC-USDT",
+			"ETH/USDT":      "ETH-USDT",
+			"EOS/USDT":      "eos_usdt",
+			"ONT/USDT":      "ont_usdt",
+			"QTUM/USDT":     "qtum_usdt",
+			"ONT/ETH":       "ont_eth",
+			"BTC/USD/SWAP":  "BTC-USD-SWAP",
+			"BTC/USDT/SWAP": "BTC-USDT-SWAP",
 		},
 		tradeTypeMap: map[string]string{
 			"buy":         constant.TradeTypeBuy,
@@ -198,6 +205,11 @@ func (e *OKEX) GetAccount() interface{} {
 		"notionalUsd": conver.Float64Must(json.Get("notionalUsd").MustString()),
 		"uTime":       conver.Float64Must(json.Get("uTime").MustString()),
 	}
+}
+
+// 策略下单，提供止盈止损
+func (e *OKEX) TradeAlgo(instId, tdMode, side, ordType, sz string, options ...interface{}) interface{} {
+	return nil
 }
 
 // Trade place an order
@@ -572,6 +584,7 @@ func (e *OKEX) GetPositions(stockType string, options ...interface{}) interface{
 		positionJSON := positionsJSON.GetIndex(i)
 		fmt.Println(positionJSON)
 		positions = append(positions, Position{
+			MgnMode:       positionJSON.Get("mgnMode").MustString(),
 			Price:         conver.Float64Must(positionJSON.Get("avgPx").MustString()),
 			Leverage:      conver.IntMust(positionJSON.Get("lever").MustString()),
 			Amount:        conver.Float64Must(positionJSON.Get("pos").MustString()),
@@ -580,10 +593,57 @@ func (e *OKEX) GetPositions(stockType string, options ...interface{}) interface{
 			Profit:        conver.Float64Must(positionJSON.Get("upl").MustString()),
 			ContractType:  positionJSON.Get("instType").MustString(),
 			TradeType:     positionJSON.Get("instType").MustString(),
-			StockType:     positionJSON.Get("instId").MustString(),
+			InstId:        positionJSON.Get("instId").MustString(),
+			PosId:         positionJSON.Get("posId").MustString(),
+			PosSide:       positionJSON.Get("posSide").MustString(),
 		})
 	}
 	return positions
+}
+
+// GetPositions get the positions detail of this exchange
+func (e *OKEX) ClosePosition(instId, mgnMode, posSide string, options ...interface{}) bool {
+	if _, ok := e.stockTypeMap[instId]; !ok {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "ClosePosition() error, unrecognized stockType: ", instId)
+		return false
+	}
+
+	if !mgnModes[mgnMode] {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "ClosePosition() error, unrecognized mgnMode: ", mgnMode)
+		return false
+	}
+
+	if posSide == "" {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "ClosePosition() error, unrecognized posSide: ", posSide)
+		return false
+	}
+
+	body := map[string]interface{}{
+		"instId":  e.stockTypeMap[instId],
+		"mgnMode": mgnMode,
+		"posSide": posSide,
+	}
+
+	for k, v := range options {
+		if k == 0 {
+			body["ccy"] = v
+		} else if k == 1 {
+			body["autoCxl"] = v
+		}
+	}
+
+	json, err := e.getAuthJSON(e.host+"trade/close-position", "POST", body)
+	if err != nil {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "ClosePosition() error, ", err)
+		return false
+	}
+
+	if code := json.Get("code").MustString(); code != "0" {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "trade/close-position error ")
+		return false
+	}
+
+	return true
 }
 
 func sign(method, path, body string, secretKey []byte) (string, string) {

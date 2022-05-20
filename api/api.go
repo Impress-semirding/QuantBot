@@ -27,6 +27,8 @@ type Exchange interface {
 	GetTicker(stockType string, sizes ...interface{}) interface{}                                         //获取交易所的最新市场行情数据
 	GetRecords(stockType, period string, sizes ...interface{}) interface{}
 	GetPositions(stockType string, options ...interface{}) interface{}
+	ClosePosition(instId, mgnMode, posSide string, options ...interface{}) bool
+	TradeAlgo(instId, tdMode, side, ordType, sz string, options ...interface{}) interface{}
 }
 
 var (

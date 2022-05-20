@@ -309,3 +309,12 @@ func (e *Binance) GetRecords(stockType, period string, sizes ...interface{}) int
 func (e *Binance) GetPositions(stockType string, options ...interface{}) interface{} {
 	return nil
 }
+
+func (e *Binance) ClosePosition(instId, mgnMode, posSide string, options ...interface{}) bool {
+	return true
+}
+
+// 策略下单，提供止盈止损
+func (e *Binance) TradeAlgo(instId, tdMode, side, ordType, sz string, options ...interface{}) interface{} {
+	return nil
+}
