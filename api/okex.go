@@ -68,6 +68,7 @@ func NewOKEX(opt Option) Exchange {
 			"M15": "15m",
 			"M30": "30m",
 			"H":   "1H",
+			"H4":  "4H",
 			"D":   "1D",
 			"W":   "1W",
 		},
@@ -239,6 +240,7 @@ func (e *OKEX) buy(stockType string, price, amount float64, msgs ...interface{})
 		"tdMode":  "cross",
 		"side":    "buy",
 		"ordType": "limit",
+		"posSide": "long",
 		"px":      conver.StringMust(price),
 		"sz":      conver.StringMust(amount),
 	}
@@ -258,31 +260,32 @@ func (e *OKEX) buy(stockType string, price, amount float64, msgs ...interface{})
 		return false
 	}
 	e.logger.Log(constant.BUY, stockType, price, amount, msgs...)
-	return fmt.Sprint(j.Get("ordId").Interface())
+	return j.Get("ordId").MustInt64()
 }
 
 func (e *OKEX) sell(stockType string, price, amount float64, msgs ...interface{}) interface{} {
-	params := []string{
-		"symbol=" + e.stockTypeMap[stockType],
-		fmt.Sprintf("amount=%f", amount),
+	body := map[string]string{
+		"instId":  e.stockTypeMap[stockType],
+		"tdMode":  "cross",
+		"side":    "sell",
+		"ordType": "limit",
+		"posSide": "short",
+		"px":      conver.StringMust(price),
+		"sz":      conver.StringMust(amount),
 	}
-	typeParam := "type=sell_market"
-	if price > 0 {
-		typeParam = "type=sell"
-		params = append(params, fmt.Sprintf("price=%f", price))
-	}
-	params = append(params, typeParam)
-	json, err := e.getAuthJSON(e.host+"trade.do", "GET", params)
+	json, err := e.getAuthJSON(e.host+"trade/order", "POST", body)
 	if err != nil {
-		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Sell() error, ", err)
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Buy() error, ", err)
 		return false
 	}
-	if result := json.Get("result").MustBool(); !result {
+
+	j := json.Get("data").GetIndex(0)
+	if sCode := j.Get("sCode").MustString(); sCode != "0" {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Sell() error, the error number is ", json.Get("error_code").MustInt())
 		return false
 	}
-	e.logger.Log(constant.SELL, stockType, price, amount, msgs...)
-	return fmt.Sprint(json.Get("order_id").Interface())
+	e.logger.Log(constant.BUY, stockType, price, amount, msgs...)
+	return j.Get("ordId").MustInt64()
 }
 
 // GetOrder get details of an order
