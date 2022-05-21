@@ -514,36 +514,19 @@ func (e *OKEX) GetRecords(stockType, period string, sizes ...interface{}) interf
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetRecords() error, ", err)
 		return false
 	}
-	timeLast := int64(0)
-	if len(e.records[period]) > 0 {
-		timeLast = e.records[period][len(e.records[period])-1].Time
-	}
 	recordsNew := []Record{}
 	json = json.Get("data")
 	for i := len(json.MustArray()); i > 0; i-- {
 		recordJSON := json.GetIndex(i - 1)
-		recordTime := conver.Int64Must(recordJSON.GetIndex(0).MustString()) / 1000
-		if recordTime > timeLast {
-			recordsNew = append([]Record{{
-				Time:   recordTime,
-				Open:   conver.Float64Must(recordJSON.GetIndex(1).MustString()),
-				High:   conver.Float64Must(recordJSON.GetIndex(2).MustString()),
-				Low:    conver.Float64Must(recordJSON.GetIndex(3).MustString()),
-				Close:  conver.Float64Must(recordJSON.GetIndex(4).MustString()),
-				Volume: conver.Float64Must(recordJSON.GetIndex(5).MustString()),
-			}}, recordsNew...)
-		} else if timeLast > 0 && recordTime == timeLast {
-			e.records[period][len(e.records[period])-1] = Record{
-				Time:   recordTime,
-				Open:   conver.Float64Must(recordJSON.GetIndex(1).MustString()),
-				High:   conver.Float64Must(recordJSON.GetIndex(2).MustString()),
-				Low:    conver.Float64Must(recordJSON.GetIndex(3).MustString()),
-				Close:  conver.Float64Must(recordJSON.GetIndex(4).MustString()),
-				Volume: conver.Float64Must(recordJSON.GetIndex(5).MustString()),
-			}
-		} else {
-			break
-		}
+		recordTime := conver.Int64Must(recordJSON.GetIndex(0).MustString())
+		recordsNew = append([]Record{{
+			Time:   recordTime,
+			Open:   conver.Float64Must(recordJSON.GetIndex(1).MustString()),
+			High:   conver.Float64Must(recordJSON.GetIndex(2).MustString()),
+			Low:    conver.Float64Must(recordJSON.GetIndex(3).MustString()),
+			Close:  conver.Float64Must(recordJSON.GetIndex(4).MustString()),
+			Volume: conver.Float64Must(recordJSON.GetIndex(5).MustString()),
+		}}, recordsNew...)
 	}
 	e.records[period] = append(e.records[period], recordsNew...)
 	if len(e.records[period]) > size {
