@@ -302,6 +302,6 @@ func (e *BigOne) ClosePosition(instId, mgnMode, posSide string, options ...inter
 }
 
 // 策略下单，提供止盈止损
-func (e *BigOne) TradeAlgo(instId, tdMode, side, ordType, sz string, options ...interface{}) interface{} {
+func (e *BigOne) TradeAlgo(instId, tdMode, side, ordType, sz string, options map[string]interface{}) interface{} {
 	return nil
 }

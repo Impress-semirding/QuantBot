@@ -209,8 +209,35 @@ func (e *OKEX) GetAccount() interface{} {
 }
 
 // 策略下单，提供止盈止损
-func (e *OKEX) TradeAlgo(instId, tdMode, side, ordType, sz string, options ...interface{}) interface{} {
-	return nil
+func (e *OKEX) TradeAlgo(instId, tdMode, side, ordType, sz string, options map[string]interface{}) interface{} {
+	if _, ok := e.stockTypeMap[instId]; !ok {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Trade() error, unrecognized stockType: ", instId)
+		return false
+	}
+	body := map[string]interface{}{
+		"instId":  e.stockTypeMap[instId],
+		"tdMode":  tdMode,
+		"side":    side,
+		"ordType": ordType,
+		"sz":      sz,
+	}
+
+	for k, v := range options {
+		body[k] = v
+	}
+
+	json, err := e.getAuthJSON(e.host+"trade/order-algo", "POST", body)
+	if err != nil {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "trade/order-algo error, ", err)
+		return false
+	}
+
+	j := json.Get("data").GetIndex(0)
+	if sCode := j.Get("sCode").MustString(); sCode != "0" {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "trade/order-algo error,", j.Get("sMsg").MustString())
+		return false
+	}
+	return j.Get("algoId").MustString()
 }
 
 // Trade place an order

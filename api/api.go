@@ -28,7 +28,7 @@ type Exchange interface {
 	GetRecords(stockType, period string, sizes ...interface{}) interface{}
 	GetPositions(stockType string, options ...interface{}) interface{}
 	ClosePosition(instId, mgnMode, posSide string, options ...interface{}) bool
-	TradeAlgo(instId, tdMode, side, ordType, sz string, options ...interface{}) interface{}
+	TradeAlgo(instId, tdMode, side, ordType, sz string, options map[string]interface{}) interface{}
 }
 
 var (
