@@ -276,18 +276,18 @@ func (e *OKEX) buy(stockType string, price, amount float64, msgs ...interface{})
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Buy() error, ", err)
 		return false
 	}
-	// 	clOrdId":interface {}(string) ""
-	// "ordId":interface {}(string) ""
-	// "sCode":interface {}(string) "51000"
-	// "sMsg":interface {}(string) "Parameter tdMode  error "
-	// "tag":
+	if json == nil {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Buy() error, ", err)
+		return false
+	}
+
 	j := json.Get("data").GetIndex(0)
 	if sCode := j.Get("sCode").MustString(); sCode != "0" {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Buy() error, the error number is ", json.Get("error_code").MustInt())
 		return false
 	}
 	e.logger.Log(constant.BUY, stockType, price, amount, msgs...)
-	return j.Get("ordId").MustInt64()
+	return j.Get("ordId").MustString()
 }
 
 func (e *OKEX) sell(stockType string, price, amount float64, msgs ...interface{}) interface{} {
@@ -305,14 +305,18 @@ func (e *OKEX) sell(stockType string, price, amount float64, msgs ...interface{}
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Buy() error, ", err)
 		return false
 	}
+	if json == nil {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Sell() error, ", err)
+		return false
+	}
 
 	j := json.Get("data").GetIndex(0)
 	if sCode := j.Get("sCode").MustString(); sCode != "0" {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "Sell() error, the error number is ", json.Get("error_code").MustInt())
 		return false
 	}
-	e.logger.Log(constant.BUY, stockType, price, amount, msgs...)
-	return j.Get("ordId").MustInt64()
+	e.logger.Log(constant.SELL, stockType, price, amount, msgs...)
+	return j.Get("ordId").MustString()
 }
 
 // GetOrder get details of an order
