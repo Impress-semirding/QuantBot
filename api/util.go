@@ -13,12 +13,21 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/bitly/go-simplejson"
 	"github.com/miaolz123/conver"
 )
 
-var client = http.DefaultClient
+// var client = http.DefaultClient
+
+var client http.Client = http.Client{
+	Timeout: time.Millisecond * 1000, // Set 1s timeout.
+}
+
+type timeout interface {
+	Timeout() bool
+}
 
 // Position struct
 type Position struct {
@@ -192,7 +201,12 @@ func get(url string) (ret []byte, err error) {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := client.Do(req)
-	if resp == nil {
+	if err != nil {
+		if t, ok := err.(timeout); ok {
+			ret = nil
+			err = fmt.Errorf("timeout: %t", t.Timeout())
+		}
+	} else if resp == nil {
 		err = fmt.Errorf("[GET %s] HTTP Error Info: %v", url, err)
 	} else if resp.StatusCode == 200 {
 		ret, _ = ioutil.ReadAll(resp.Body)

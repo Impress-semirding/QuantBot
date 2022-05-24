@@ -174,7 +174,7 @@ func (e *OKEX) getAuthJSON(url string, method string, body interface{}) (json *s
 		resp, errs = postWithHeader(url, header, body)
 	}
 	if errs != nil {
-		return
+		return nil, errs
 	}
 
 	return simplejson.NewJson(resp)
