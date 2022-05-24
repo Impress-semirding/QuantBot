@@ -21,7 +21,8 @@
 
 ```shell
 $ cd QuantBot
-$ glide install
+$ go mod tidy
+$ go run QuantBot.go
 ```
 
 ## 支持的交易所
