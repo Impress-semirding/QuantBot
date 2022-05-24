@@ -7,7 +7,6 @@ import (
 	encodingJson "encoding/json"
 	"fmt"
 	netUrl "net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -129,9 +128,6 @@ func (e *OKEX) GetMinAmount(stock string) float64 {
 }
 
 func (e *OKEX) getAuthJSON(url string, method string, body interface{}) (json *simplejson.Json, err error) {
-
-	os.Setenv("HTTP_PROXY", "http://127.0.0.1:8001")
-	os.Setenv("HTTPS_PROXY", "http://127.0.0.1:8001")
 	p, _ := netUrl.Parse(url)
 	requestPath := p.Path
 	if p.RawQuery != "" {
