@@ -55,6 +55,7 @@ type Order struct {
 	Fee        float64 //这个订单的交易费
 	TradeType  string  //交易类型
 	StockType  string  //货币类型
+	Pnl        float64
 }
 
 // Record struct
@@ -140,7 +141,13 @@ func post(url string, data []string) (ret []byte, err error) {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := client.Do(req)
-	if resp == nil {
+	if err != nil {
+		if t, ok := err.(timeout); ok {
+			ret = nil
+			err = fmt.Errorf("timeout: %t", t.Timeout())
+			return ret, err
+		}
+	} else if resp == nil {
 		err = fmt.Errorf("[POST %s] HTTP Error Info: %v", url, err)
 	} else if resp.StatusCode == 200 {
 		ret, _ = ioutil.ReadAll(resp.Body)
@@ -163,7 +170,13 @@ func postWithHeader(url string, header map[string]string, data interface{}) (ret
 		req.Header.Set(k, v)
 	}
 	resp, err := client.Do(req)
-	if resp == nil {
+	if err != nil {
+		if t, ok := err.(timeout); ok {
+			ret = nil
+			err = fmt.Errorf("timeout: %t", t.Timeout())
+			return ret, err
+		}
+	} else if resp == nil {
 		err = fmt.Errorf("[POST %s] HTTP Error Info: %v", url, err)
 	} else if resp.StatusCode == 200 {
 		ret, _ = ioutil.ReadAll(resp.Body)
@@ -182,7 +195,13 @@ func getWithHeader(url string, header map[string]string, data interface{}) (ret 
 		req.Header.Set(k, v)
 	}
 	resp, err := client.Do(req)
-	if resp == nil {
+	if err != nil {
+		if t, ok := err.(timeout); ok {
+			ret = nil
+			err = fmt.Errorf("timeout: %t", t.Timeout())
+			return ret, err
+		}
+	} else if resp == nil {
 		err = fmt.Errorf("[GET %s] HTTP Error Info: %v", url, err)
 	} else if resp.StatusCode == 200 {
 		ret, _ = ioutil.ReadAll(resp.Body)
@@ -205,6 +224,7 @@ func get(url string) (ret []byte, err error) {
 		if t, ok := err.(timeout); ok {
 			ret = nil
 			err = fmt.Errorf("timeout: %t", t.Timeout())
+			return ret, err
 		}
 	} else if resp == nil {
 		err = fmt.Errorf("[GET %s] HTTP Error Info: %v", url, err)

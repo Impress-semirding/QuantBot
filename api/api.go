@@ -20,13 +20,13 @@ type Exchange interface {
 	GetMinAmount(stock string) float64                                                                    //获取交易所的最小交易数量
 	GetAccount() interface{}                                                                              //获取交易所的账户资金信息
 	Trade(tradeType string, stockType string, price, amount interface{}, msgs ...interface{}) interface{} //如果 Price <= 0 自动设置为市价单，数量参数也有所不同,如果成功返回订单的 ID,如果失败返回 false
-	GetOrder(stockType, id string) interface{}                                                            //返回订单信息
+	GetOrder(instId string, option ...interface{}) interface{}                                            //返回订单信息
 	GetOrders(stockType string) interface{}                                                               //返回所有的未完成订单列表
 	GetTrades(stockType string) interface{}                                                               //返回最近的已完成订单列表
 	CancelOrder(order Order) bool                                                                         //取消一笔订单
 	GetTicker(stockType string, sizes ...interface{}) interface{}                                         //获取交易所的最新市场行情数据
 	GetRecords(stockType, period string, sizes ...interface{}) interface{}
-	GetPositions(stockType string, options ...interface{}) interface{}
+	GetPositions(options ...interface{}) interface{}
 	ClosePosition(instId, mgnMode, posSide string, options ...interface{}) bool
 	TradeAlgo(instId, tdMode, side, ordType, sz string, options map[string]interface{}) interface{}
 }

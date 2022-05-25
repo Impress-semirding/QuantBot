@@ -316,38 +316,148 @@ func (e *OKEX) sell(stockType string, price, amount float64, msgs ...interface{}
 }
 
 // GetOrder get details of an order
-func (e *OKEX) GetOrder(stockType, id string) interface{} {
-	stockType = strings.ToUpper(stockType)
-	if _, ok := e.stockTypeMap[stockType]; !ok {
-		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetOrder() error, unrecognized stockType: ", stockType)
+func (e *OKEX) GetOrder(instId string, option ...interface{}) interface{} {
+	instId = strings.ToUpper(instId)
+	if _, ok := e.stockTypeMap[instId]; !ok {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetOrder() error, unrecognized stockType: ", instId)
 		return false
 	}
 	params := []string{
-		"symbol=" + e.stockTypeMap[stockType],
-		"order_id=" + id,
+		"instId=" + e.stockTypeMap[instId],
 	}
-	json, err := e.getAuthJSON(e.host+"order_info.do", "GET", params)
+
+	query := ""
+	for i, v := range option {
+		var value string
+		var ok bool
+		if value, ok = v.(string); !ok {
+			e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetOrder() params type is error: ", v)
+			return false
+		}
+		switch i {
+		case 0:
+			params = append(params, "ordId="+value)
+			break
+		case 1:
+			params = append(params, "clOrdId="+value)
+			break
+		}
+	}
+
+	for index, v := range params {
+		if index == 0 {
+			query = v
+		} else {
+			query = query + "&" + v
+		}
+	}
+	json, err := e.getAuthJSON(e.host+"trade/order?"+query, "GET", params)
+	if err != nil {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "/api/v5/trade/order error, ", err)
+		return false
+	}
+
+	if code := json.Get("code").MustString(); code != "0" {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "/api/v5/trade/order error ")
+		return false
+	}
+
+	json = json.Get("data")
+	count := len(json.MustArray())
+	orders := []Order{}
+	for i := 0; i < count; i++ {
+		orderJSON := json.GetIndex(i)
+		order := Order{
+			ID:         fmt.Sprint(orderJSON.Get("ordId").MustString()),
+			Price:      conver.Float64Must(orderJSON.Get("px").MustString()),
+			Amount:     conver.Float64Must(orderJSON.Get("sz").MustString()),
+			DealAmount: conver.Float64Must(0),
+			TradeType:  e.tradeTypeMap[orderJSON.Get("side").MustString()],
+			StockType:  instId,
+			Pnl:        conver.Float64Must(orderJSON.Get("pnl").MustString()),
+		}
+		orders = append(orders, order)
+	}
+	return orders
+}
+
+// GetOrder get details of an order
+func (e *OKEX) GetOrderHistosy(instId, instType string, option ...map[string]interface{}) interface{} {
+	instId = strings.ToUpper(instId)
+	if _, ok := e.stockTypeMap[instId]; !ok {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetOrder() error, unrecognized stockType: ", instId)
+		return false
+	}
+	params := []string{
+		"instId=" + e.stockTypeMap[instId],
+		"instType=" + instType,
+	}
+
+	for _, value := range option {
+		for k, v := range value {
+			var value string
+			var ok bool
+			if value, ok = v.(string); !ok {
+				e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetOrder() params type is error: ", k)
+				return false
+			}
+			switch k {
+			case "uly":
+				params = append(params, "uly="+value)
+				break
+			case "ordType":
+				params = append(params, "ordType="+value)
+				break
+			case "state":
+				params = append(params, "state="+value)
+			case "category":
+				params = append(params, "category="+value)
+			case "after":
+				params = append(params, "after="+value)
+			case "before":
+				params = append(params, "before="+value)
+			case "limit":
+				params = append(params, "limit="+value)
+			}
+		}
+	}
+
+	query := ""
+	for index, v := range params {
+		if index == 0 {
+			query = v
+		} else {
+			query = query + "&" + v
+		}
+	}
+	json, err := e.getAuthJSON(e.host+"trade/orders-history?"+query, "GET", params)
 	if err != nil {
 		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetOrder() error, ", err)
 		return false
 	}
-	if result := json.Get("result").MustBool(); !result {
-		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetOrder() error, the error number is ", json.Get("error_code").MustInt())
+
+	if code := json.Get("code").MustString(); code != "0" {
+		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "trade/orders-history error ")
 		return false
 	}
-	ordersJSON := json.Get("orders")
-	if len(ordersJSON.MustArray()) > 0 {
-		orderJSON := ordersJSON.GetIndex(0)
-		return Order{
-			ID:         fmt.Sprint(orderJSON.Get("order_id").Interface()),
-			Price:      orderJSON.Get("price").MustFloat64(),
-			Amount:     orderJSON.Get("amount").MustFloat64(),
-			DealAmount: orderJSON.Get("deal_amount").MustFloat64(),
-			TradeType:  e.tradeTypeMap[orderJSON.Get("type").MustString()],
-			StockType:  stockType,
+
+	json = json.Get("data")
+	count := len(json.MustArray())
+	orders := []Order{}
+	for i := 0; i < count; i++ {
+		orderJSON := json.GetIndex(i)
+		order := Order{
+			ID:         fmt.Sprint(orderJSON.Get("ordId").MustString()),
+			Price:      conver.Float64Must(orderJSON.Get("px").MustString()),
+			Amount:     conver.Float64Must(orderJSON.Get("sz").MustString()),
+			DealAmount: conver.Float64Must(0),
+			TradeType:  e.tradeTypeMap[orderJSON.Get("side").MustString()],
+			StockType:  instId,
+			Pnl:        conver.Float64Must(orderJSON.Get("pnl").MustString()),
 		}
+		orders = append(orders, order)
 	}
-	return false
+	return orders
 }
 
 // GetOrders get all unfilled orders
@@ -563,25 +673,25 @@ func (e *OKEX) GetRecords(stockType, period string, sizes ...interface{}) interf
 }
 
 // GetPositions get the positions detail of this exchange
-func (e *OKEX) GetPositions(stockType string, options ...interface{}) interface{} {
-	stockType = strings.ToUpper(stockType)
-	if _, ok := e.stockTypeMap[stockType]; !ok {
-		e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetPositions() error, unrecognized stockType: ", stockType)
-		return false
-	}
-
-	params := []string{
-		"?stockType=" + e.stockTypeMap[stockType],
-	}
+func (e *OKEX) GetPositions(options ...interface{}) interface{} {
+	params := []string{}
 	for index, value := range options {
-		if index == 0 {
-			if instType, ok := value.(string); ok {
-				params = append(params, "instType="+instType)
-			}
-		} else if index == 1 {
-			if posId, ok := value.(string); ok {
-				params = append(params, "posId="+posId)
-			}
+		var v string
+		var ok bool
+		if v, ok = value.(string); !ok {
+			e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetPositions() error, unrecognized stockType: ", v)
+			return false
+		}
+		switch index {
+		case 0:
+			params = append(params, "instId="+v)
+			break
+		case 1:
+			params = append(params, "instType="+v)
+			break
+		case 2:
+			params = append(params, "posId="+v)
+			break
 		}
 	}
 
