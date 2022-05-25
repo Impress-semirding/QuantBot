@@ -684,7 +684,11 @@ func (e *OKEX) GetPositions(options ...interface{}) interface{} {
 		}
 		switch index {
 		case 0:
-			params = append(params, "instId="+v)
+			if _, ok := e.stockTypeMap[v]; !ok {
+				e.logger.Log(constant.ERROR, "", 0.0, 0.0, "GetTrades() error, unrecognized instId: ", v)
+				return false
+			}
+			params = append(params, "?instId="+e.stockTypeMap[v])
 			break
 		case 1:
 			params = append(params, "instType="+v)
