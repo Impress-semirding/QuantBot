@@ -158,7 +158,7 @@ func (e *OKEX) getAuthJSON(url string, method string, body interface{}) (json *s
 		"OK-ACCESS-SIGN":       signStr,
 		"OK-ACCESS-TIMESTAMP":  timestamp,
 		"OK-ACCESS-PASSPHRASE": passphrase,
-		"x-simulated-trading":  "1",
+		// "x-simulated-trading":  "1",
 	}
 
 	e.lastTimes++
