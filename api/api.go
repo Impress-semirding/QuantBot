@@ -8,6 +8,7 @@ type Option struct {
 	AccessKey  string
 	SecretKey  string
 	Passphrase string
+	Test       string
 }
 
 // Exchange interface

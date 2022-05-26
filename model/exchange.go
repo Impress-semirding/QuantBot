@@ -16,6 +16,7 @@ type Exchange struct {
 	CreatedAt  time.Time  `json:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt"`
 	DeletedAt  *time.Time `sql:"index" json:"-"`
+	Test       string
 }
 
 // ListExchange ...

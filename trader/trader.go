@@ -79,6 +79,7 @@ func initialize(id int64) (trader Global, err error) {
 				AccessKey:  e.AccessKey,
 				SecretKey:  e.SecretKey,
 				Passphrase: e.Passphrase,
+				Test:       e.Test,
 			}
 			trader.es = append(trader.es, maker(opt))
 		}

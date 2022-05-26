@@ -68,6 +68,7 @@ func (exchange) Put(req model.Exchange, ctx rpc.Context) (resp response) {
 		exchange.AccessKey = req.AccessKey
 		exchange.SecretKey = req.SecretKey
 		exchange.Passphrase = req.Passphrase
+		exchange.Test = req.Test
 		if err := model.DB.Save(&exchange).Error; err != nil {
 			resp.Message = fmt.Sprint(err)
 			return

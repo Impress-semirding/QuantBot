@@ -161,6 +161,10 @@ func (e *OKEX) getAuthJSON(url string, method string, body interface{}) (json *s
 		// "x-simulated-trading":  "1",
 	}
 
+	if e.option.Test == "1" {
+		header["x-simulated-trading"] = "1"
+	}
+
 	e.lastTimes++
 	var errs error
 	var resp []byte
