@@ -21,6 +21,7 @@ func init() {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".js") {
 			return err
 		}
+
 		file, err := os.Open(path)
 		if err != nil {
 			return err
